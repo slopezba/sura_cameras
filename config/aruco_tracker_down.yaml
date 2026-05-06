@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    cam_base_topic: /cirtesub/down_camera/camera/image_color
+    output_frame: ""
+    marker_dict: 4X4_1000
+    image_is_rectified: true
+    image_sub_compressed: false
+    publish_tf: false
+    marker_size: 0.4
+    image_sub_qos:
+      reliability: 2
+      durability: 2
+      depth: 1
+
+    pose_selector:
+      strategy: REPROJECTION_ERROR
+      debug: false

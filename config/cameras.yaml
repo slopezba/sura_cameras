@@ -1,0 +1,23 @@
+down_camera:
+  image_topic: /cirtesub/down_camera/camera/image_color
+  camera_info_topic: /cirtesub/down_camera/camera/camera_info
+  decimated_topic: /cirtesub/down_camera/decimated/image_raw
+  decimated_camera_info_topic: /cirtesub/down_camera/decimated/camera_info
+  decimation_x: 4
+  decimation_y: 4
+  offset_x: 0
+  offset_y: 0
+  width: 1280
+  height: 720
+
+front_camera:
+  image_topic: /cirtesub/front_camera/camera/image_color
+  camera_info_topic: /cirtesub/front_camera/camera/camera_info
+  decimated_topic: /cirtesub/front_camera/decimated/image_raw
+  decimated_camera_info_topic: /cirtesub/front_camera/decimated/camera_info
+  decimation_x: 4
+  decimation_y: 4
+  offset_x: 0
+  offset_y: 0
+  width: 1280
+  height: 720
