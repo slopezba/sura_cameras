@@ -39,8 +39,13 @@ def topic(namespace, path):
 
 
 def replace_robot_namespace(value, namespace):
-    if isinstance(value, str) and value.startswith("/cirtesub/"):
-        return f"/{namespace}/{value[len('/cirtesub/'):]}"
+    for template_namespace in ("sura", "cirtesub"):
+        absolute_prefix = f"/{template_namespace}/"
+        relative_prefix = f"{template_namespace}/"
+        if isinstance(value, str) and value.startswith(absolute_prefix):
+            return f"/{namespace}/{value[len(absolute_prefix):]}"
+        if isinstance(value, str) and value.startswith(relative_prefix):
+            return f"{namespace}/{value[len(relative_prefix):]}"
     return value
 
 
@@ -177,6 +182,7 @@ def usb_camera_node(camera_name, camera_cfg):
         "framerate": float(camera_cfg.get("framerate", 15.0)),
         "pixel_format": camera_cfg.get("pixel_format", "mjpeg2rgb"),
         "io_method": camera_cfg.get("io_method", "mmap"),
+        "frame_id": camera_cfg.get("frame_id", camera_name),
         "camera_frame_id": camera_cfg.get("frame_id", camera_name),
     }
 
@@ -371,13 +377,21 @@ def sim_launch_setup(context, camera_share):
     return launch_items
 
 
-def real_camera_pipeline(camera_name, camera_cfg):
-    return [
-        usb_camera_node(camera_name, camera_cfg),
-        compressed_republish(camera_name, camera_cfg["image_topic"]),
-        real_crop_decimate(camera_name, camera_cfg),
-        rectify(camera_name, camera_cfg),
-    ]
+def real_camera_pipeline(context, camera_name, camera_cfg):
+    launch_items = [usb_camera_node(camera_name, camera_cfg)]
+
+    if bool_launch_arg(context, "publish_compressed", "false") or camera_cfg.get(
+        "publish_compressed", False
+    ):
+        launch_items.append(compressed_republish(camera_name, camera_cfg["image_topic"]))
+
+    if bool_launch_arg(context, "publish_decimated", "false"):
+        launch_items.append(real_crop_decimate(camera_name, camera_cfg))
+
+    if bool_launch_arg(context, "publish_rectified", "false"):
+        launch_items.append(rectify(camera_name, camera_cfg))
+
+    return launch_items
 
 
 def real_launch_setup(context, camera_share):
@@ -423,23 +437,21 @@ def real_launch_setup(context, camera_share):
         and "down_camera" in cameras_config
     ):
         launch_items.extend(
-            real_camera_pipeline("down_camera", cameras_config["down_camera"])
+            real_camera_pipeline(context, "down_camera", cameras_config["down_camera"])
         )
 
     if bool_launch_arg(context, "launch_down_aruco", "true"):
-        launch_items.extend(
-            [
-                aruco_down_node(aruco_tracker_config, namespace),
-                aruco_debug_compressed(namespace),
-            ]
-        )
+        launch_items.append(aruco_down_node(aruco_tracker_config, namespace))
+
+        if bool_launch_arg(context, "publish_aruco_debug_compressed", "true"):
+            launch_items.append(aruco_debug_compressed(namespace))
 
     if (
         bool_launch_arg(context, "launch_front_camera", "true")
         and "front_camera" in cameras_config
     ):
         launch_items.extend(
-            real_camera_pipeline("front_camera", cameras_config["front_camera"])
+            real_camera_pipeline(context, "front_camera", cameras_config["front_camera"])
         )
 
     if (
@@ -447,7 +459,7 @@ def real_launch_setup(context, camera_share):
         and "left_camera" in cameras_config
     ):
         launch_items.extend(
-            real_camera_pipeline("left_camera", cameras_config["left_camera"])
+            real_camera_pipeline(context, "left_camera", cameras_config["left_camera"])
         )
 
     return launch_items
@@ -487,6 +499,26 @@ def generate_launch_description():
                 "launch_down_aruco",
                 default_value="true",
                 description="Use true/false, or auto: true in sim and real",
+            ),
+            DeclareLaunchArgument(
+                "publish_compressed",
+                default_value="false",
+                description="In real mode, republish raw camera images as compressed.",
+            ),
+            DeclareLaunchArgument(
+                "publish_rectified",
+                default_value="false",
+                description="In real mode, publish rectified camera images.",
+            ),
+            DeclareLaunchArgument(
+                "publish_decimated",
+                default_value="false",
+                description="In real mode, publish crop/decimated camera images.",
+            ),
+            DeclareLaunchArgument(
+                "publish_aruco_debug_compressed",
+                default_value="true",
+                description="In real mode, republish ArUco debug image as compressed.",
             ),
             DeclareLaunchArgument(
                 "down_camera_image_topic",

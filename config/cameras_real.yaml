@@ -1,14 +1,14 @@
 down_camera:
   device: /dev/video4
   camera_name: down_camera
-  frame_id: bluerov2/camera_down/optical_frame
+  frame_id: sura/camera_down/optical_frame
 
-  image_topic: /cirtesub/down_camera/camera/image_raw
-  camera_info_topic: /cirtesub/down_camera/camera/camera_info
-  rectified_topic: /cirtesub/down_camera/camera/image_rect
+  image_topic: /sura/down_camera/camera/image_raw
+  camera_info_topic: /sura/down_camera/camera/camera_info
+  rectified_topic: /sura/down_camera/camera/image_rect
 
-  decimated_topic: /cirtesub/down_camera/decimated/image_raw
-  decimated_camera_info_topic: /cirtesub/down_camera/decimated/camera_info
+  decimated_topic: /sura/down_camera/decimated/image_raw
+  decimated_camera_info_topic: /sura/down_camera/decimated/camera_info
 
   decimation_x: 2
   decimation_y: 2
@@ -16,49 +16,50 @@ down_camera:
   offset_y: 0
 
   width: 640
-  height: 480
-  framerate: 15.0
+  height: 360
+  framerate: 10.0
   pixel_format: mjpeg2rgb
   io_method: mmap
 
 
-# front_camera:
-#   driver: usb_cam
-#   device: /dev/video8
-#   camera_name: front_camera
-#   frame_id: bluerov2/camera_front/optical_frame
+front_camera:
+  driver: usb_cam
+  device: /dev/video8
+  camera_name: front_camera
+  frame_id: sura/camera_front/optical_frame
 
-#   image_topic: /cirtesub/front_camera/camera/image_raw
-#   camera_info_topic: /cirtesub/front_camera/camera/camera_info
-#   rectified_topic: /cirtesub/front_camera/camera/image_rect
+  image_topic: /sura/front_camera/camera/image_raw
+  camera_info_topic: /sura/front_camera/camera/camera_info
+  rectified_topic: /sura/front_camera/camera/image_rect
 
-#   decimated_topic: /cirtesub/front_camera/decimated/image_raw
-#   decimated_camera_info_topic: /cirtesub/front_camera/decimated/camera_info
+  decimated_topic: /sura/front_camera/decimated/image_raw
+  decimated_camera_info_topic: /sura/front_camera/decimated/camera_info
 
-#   decimation_x: 2
-#   decimation_y: 2
-#   offset_x: 0
-#   offset_y: 0
+  decimation_x: 2
+  decimation_y: 2
+  offset_x: 0
+  offset_y: 0
 
-#   width: 640
-#   height: 360
-#   framerate: 15.0
-#   pixel_format: mjpeg2rgb
-#   io_method: mmap
+  width: 640
+  height: 360
+  framerate: 15.0
+  pixel_format: mjpeg2rgb
+  io_method: mmap
 
 
 # left_camera:
 #   driver: usb_cam
 #   device: /dev/video0
 #   camera_name: left_camera
-#   frame_id: bluerov2/camera_left/optical_frame
+#   publish_compressed: true
+#   frame_id: sura/camera_left/optical_frame
 
-#   image_topic: /cirtesub/left_camera/camera/image_raw
-#   camera_info_topic: /cirtesub/left_camera/camera/camera_info
-#   rectified_topic: /cirtesub/left_camera/camera/image_rect
+#   image_topic: /sura/left_camera/camera/image_raw
+#   camera_info_topic: /sura/left_camera/camera/camera_info
+#   rectified_topic: /sura/left_camera/camera/image_rect
 
-#   decimated_topic: /cirtesub/left_camera/decimated/image_raw
-#   decimated_camera_info_topic: /cirtesub/left_camera/decimated/camera_info
+#   decimated_topic: /sura/left_camera/decimated/image_raw
+#   decimated_camera_info_topic: /sura/left_camera/decimated/camera_info
 
 #   decimation_x: 2
 #   decimation_y: 2
@@ -67,6 +68,6 @@ down_camera:
 
 #   width: 640
 #   height: 360
-#   framerate: 15.0
-#   pixel_format: mjpeg2rgb
+#   framerate: 10.0
+#   pixel_format: yuyv2rgb
 #   io_method: mmap
