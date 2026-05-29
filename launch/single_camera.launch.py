@@ -1,0 +1,174 @@
+import os
+import tempfile
+
+import yaml
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import ComposableNodeContainer, Node
+from launch_ros.descriptions import ComposableNode
+
+
+def enabled(value):
+    return str(value).lower() in ("true", "1", "yes", "on")
+
+
+def load_yaml(path):
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def camera_info_url(camera_name, camera):
+    calibration = load_yaml(os.path.join(camera["config_dir"], "calibration.yaml"))
+    key = f"calibration_{int(camera['width'])}x{int(camera['height'])}"
+    if not calibration.get("calibrated", False) or key not in calibration:
+        return ""
+
+    calibration_path = os.path.join(
+        tempfile.gettempdir(),
+        f"{camera_name}_{int(camera['width'])}x{int(camera['height'])}_calibration.yaml",
+    )
+    with open(calibration_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(calibration[key], f, sort_keys=False)
+
+    return f"file://{calibration_path}"
+
+
+def usb_camera(camera_name, camera):
+    parameters = {
+        "video_device": camera["port"],
+        "camera_name": camera_name,
+        "image_width": int(camera["width"]),
+        "image_height": int(camera["height"]),
+        "framerate": float(camera["framerate"]),
+        "pixel_format": camera.get("pixel_format", "mjpeg2rgb"),
+        "io_method": camera.get("io_method", "mmap"),
+        "frame_id": camera.get("frame_id", camera_name),
+        "camera_frame_id": camera.get("frame_id", camera_name),
+    }
+
+    url = camera_info_url(camera_name, camera)
+    if url:
+        parameters["camera_info_url"] = url
+
+    return Node(
+        package="usb_cam",
+        executable="usb_cam_node_exe",
+        namespace=f"{camera_name}/camera",
+        name=f"{camera_name}_usb_cam",
+        output="log",
+        parameters=[parameters],
+    )
+
+
+def image_topic(camera, environment):
+    if environment == "sim":
+        return camera["stonefish_topic"]
+    return "image_raw"
+
+
+def compressed(camera_name, camera, environment):
+    return Node(
+        package="image_transport",
+        executable="republish",
+        namespace=f"{camera_name}/camera",
+        name=f"{camera_name}_compressed_republish",
+        output="log",
+        arguments=["raw", "compressed"],
+        remappings=[
+            ("in", image_topic(camera, environment)),
+            ("out", "image_raw"),
+        ],
+    )
+
+
+def decimated(camera_name, camera, environment):
+    decimation = camera.get("decimated", {})
+    return ComposableNodeContainer(
+        name=f"{camera_name}_decimated_container",
+        namespace=f"{camera_name}/camera",
+        package="rclcpp_components",
+        executable="component_container",
+        output="log",
+        composable_node_descriptions=[
+            ComposableNode(
+                package="image_proc",
+                plugin="image_proc::CropDecimateNode",
+                name=f"{camera_name}_crop_decimate",
+                remappings=[
+                    ("image", image_topic(camera, environment)),
+                    ("camera_info", "camera_info"),
+                    ("image_out", "decimated/image_raw"),
+                    ("camera_info_out", "decimated/camera_info"),
+                ],
+                parameters=[
+                    {
+                        "decimation_x": int(decimation.get("decimation_x", 2)),
+                        "decimation_y": int(decimation.get("decimation_y", 2)),
+                        "offset_x": int(decimation.get("offset_x", 0)),
+                        "offset_y": int(decimation.get("offset_y", 0)),
+                        "width": int(decimation.get("width", int(camera["width"]) // 2)),
+                        "height": int(decimation.get("height", int(camera["height"]) // 2)),
+                    }
+                ],
+            )
+        ],
+    )
+
+
+def aruco_tracker(camera_name, camera, environment):
+    aruco_config = os.path.join(camera["config_dir"], "aruco_tracker.yaml")
+    parameters = [aruco_config]
+    if environment == "sim":
+        parameters.append({"cam_base_topic": camera["stonefish_topic"]})
+
+    return Node(
+        package="aruco_opencv",
+        executable="aruco_tracker_autostart",
+        namespace=camera_name,
+        name="aruco_tracker",
+        output="log",
+        parameters=parameters,
+    )
+
+
+def launch_setup(context, *args, **kwargs):
+    camera_name = LaunchConfiguration("camera_name").perform(context)
+    config_dir = LaunchConfiguration("camera_config_dir").perform(context)
+    environment = LaunchConfiguration("environment").perform(context)
+    launch_aruco = enabled(LaunchConfiguration("aruco").perform(context))
+
+    camera = load_yaml(os.path.join(config_dir, "camera.yaml"))
+    if not camera:
+        return []
+
+    camera["config_dir"] = config_dir
+    nodes = []
+
+    if environment == "real":
+        nodes.append(usb_camera(camera_name, camera))
+
+    if enabled(camera.get("compressed", {}).get("enabled", False)):
+        nodes.append(compressed(camera_name, camera, environment))
+
+    if enabled(camera.get("decimated", {}).get("enabled", False)):
+        nodes.append(decimated(camera_name, camera, environment))
+
+    if launch_aruco and os.path.exists(os.path.join(config_dir, "aruco_tracker.yaml")):
+        nodes.append(aruco_tracker(camera_name, camera, environment))
+
+    return nodes
+
+
+def generate_launch_description():
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument("camera_name"),
+            DeclareLaunchArgument("camera_config_dir"),
+            DeclareLaunchArgument("environment", default_value="sim"),
+            DeclareLaunchArgument("aruco", default_value="false"),
+            OpaqueFunction(function=launch_setup),
+        ]
+    )

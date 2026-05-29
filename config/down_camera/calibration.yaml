@@ -1,0 +1,63 @@
+calibrated: true
+
+calibration_640x360:
+  image_width: 640
+  image_height: 360
+  camera_name: down_camera
+
+  camera_matrix:
+    rows: 3
+    cols: 3
+    data:
+      - 432.366410689498
+      - 0.0
+      - 327.84773622478296
+      - 0.0
+      - 431.3680701353007
+      - 192.20137538190436
+      - 0.0
+      - 0.0
+      - 1.0
+
+  distortion_model: plumb_bob
+
+  distortion_coefficients:
+    rows: 1
+    cols: 5
+    data:
+      - -0.3177314473244984
+      - 0.1396141943115561
+      - 0.004526992995314179
+      - 0.002156119723530444
+      - 0.0
+
+  rectification_matrix:
+    rows: 3
+    cols: 3
+    data:
+      - 1.0
+      - -0.0
+      - 0.0
+      - -0.0
+      - 1.0
+      - -0.0
+      - 0.0
+      - 0.0
+      - 1.0
+
+  projection_matrix:
+    rows: 3
+    cols: 4
+    data:
+      - 432.366410689498
+      - 0.0
+      - 327.84773622478296
+      - 0.0
+      - 0.0
+      - 431.3680701353007
+      - 192.20137538190436
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      - 0.0

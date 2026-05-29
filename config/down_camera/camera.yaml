@@ -1,0 +1,24 @@
+name: down_camera
+driver: usb_cam
+port: /dev/video4
+frame_id: sura/camera_down/optical_frame
+
+width: 640
+height: 360
+framerate: 10.0
+pixel_format: mjpeg2rgb
+io_method: mmap
+
+stonefish_topic: /sura/down_camera/camera/image_color
+
+compressed:
+  enabled: true
+
+decimated:
+  enabled: false
+  width: 320
+  height: 180
+  decimation_x: 2
+  decimation_y: 2
+  offset_x: 0
+  offset_y: 0
