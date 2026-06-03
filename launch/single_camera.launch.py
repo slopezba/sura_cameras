@@ -1,12 +1,13 @@
 import os
 import tempfile
 
+# Camera pipeline launch description.
+
 import yaml
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import ComposableNodeContainer, Node
-from launch_ros.descriptions import ComposableNode
+from launch_ros.actions import Node
 
 
 def enabled(value):
@@ -69,51 +70,27 @@ def image_topic(camera, environment):
     return "image_raw"
 
 
-def compressed(camera_name, camera, environment):
-    return Node(
-        package="image_transport",
-        executable="republish",
-        namespace=f"{camera_name}/camera",
-        name=f"{camera_name}_compressed_republish",
-        output="log",
-        arguments=["raw", "compressed"],
-        remappings=[
-            ("in", image_topic(camera, environment)),
-            ("out", "image_raw"),
-        ],
-    )
-
-
 def decimated(camera_name, camera, environment):
     decimation = camera.get("decimated", {})
-    return ComposableNodeContainer(
-        name=f"{camera_name}_decimated_container",
+    return Node(
+        package="sura_cameras",
+        executable="image_decimator",
         namespace=f"{camera_name}/camera",
-        package="rclcpp_components",
-        executable="component_container",
+        name=f"{camera_name}_image_decimator",
         output="log",
-        composable_node_descriptions=[
-            ComposableNode(
-                package="image_proc",
-                plugin="image_proc::CropDecimateNode",
-                name=f"{camera_name}_crop_decimate",
-                remappings=[
-                    ("image", image_topic(camera, environment)),
-                    ("camera_info", "camera_info"),
-                    ("image_out", "decimated/image_raw"),
-                    ("camera_info_out", "decimated/camera_info"),
-                ],
-                parameters=[
-                    {
-                        "decimation_x": int(decimation.get("decimation_x", 2)),
-                        "decimation_y": int(decimation.get("decimation_y", 2)),
-                        "offset_x": int(decimation.get("offset_x", 0)),
-                        "offset_y": int(decimation.get("offset_y", 0)),
-                        "width": int(decimation.get("width", int(camera["width"]) // 2)),
-                        "height": int(decimation.get("height", int(camera["height"]) // 2)),
-                    }
-                ],
-            )
+        remappings=[
+            ("image_raw", image_topic(camera, environment)),
+            ("camera_info", "camera_info"),
+        ],
+        parameters=[
+            {
+                "decimation_x": int(decimation.get("decimation_x", 2)),
+                "decimation_y": int(decimation.get("decimation_y", 2)),
+                "offset_x": int(decimation.get("offset_x", 0)),
+                "offset_y": int(decimation.get("offset_y", 0)),
+                "width": int(decimation.get("width", int(camera["width"]))),
+                "height": int(decimation.get("height", int(camera["height"]))),
+            }
         ],
     )
 
@@ -149,9 +126,6 @@ def launch_setup(context, *args, **kwargs):
 
     if environment == "real":
         nodes.append(usb_camera(camera_name, camera))
-
-    if enabled(camera.get("compressed", {}).get("enabled", False)):
-        nodes.append(compressed(camera_name, camera, environment))
 
     if enabled(camera.get("decimated", {}).get("enabled", False)):
         nodes.append(decimated(camera_name, camera, environment))

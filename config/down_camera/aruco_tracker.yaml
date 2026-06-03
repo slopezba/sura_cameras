@@ -4,7 +4,7 @@
     output_frame: ""
     marker_dict: 4X4_1000
     image_is_rectified: false
-    image_sub_compressed: false
+    image_sub_compressed: true
     publish_tf: false
     marker_size: 0.3
     image_sub_qos:
