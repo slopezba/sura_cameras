@@ -64,10 +64,26 @@ def usb_camera(camera_name, camera):
     )
 
 
-def image_topic(camera, environment):
-    if environment == "sim":
-        return camera["stonefish_topic"]
-    return "image_raw"
+def sim_camera_republisher(camera_name, camera):
+    parameters = {
+        "input_image_topic": camera["stonefish_topic"],
+        "input_compressed_topic": f"{camera['stonefish_topic']}/compressed",
+        "camera_name": camera_name,
+        "frame_id": camera.get("frame_id", camera_name),
+    }
+
+    url = camera_info_url(camera_name, camera)
+    if url:
+        parameters["camera_info_url"] = url
+
+    return Node(
+        package="sura_cameras",
+        executable="sim_camera_republisher",
+        namespace=f"{camera_name}/camera",
+        name=f"{camera_name}_sim_camera_republisher",
+        output="log",
+        parameters=[parameters],
+    )
 
 
 def decimated(camera_name, camera, environment):
@@ -79,7 +95,7 @@ def decimated(camera_name, camera, environment):
         name=f"{camera_name}_image_decimator",
         output="log",
         remappings=[
-            ("image_raw", image_topic(camera, environment)),
+            ("image_raw", "image_raw"),
             ("camera_info", "camera_info"),
         ],
         parameters=[
@@ -98,8 +114,6 @@ def decimated(camera_name, camera, environment):
 def aruco_tracker(camera_name, camera, environment):
     aruco_config = os.path.join(camera["config_dir"], "aruco_tracker.yaml")
     parameters = [aruco_config]
-    if environment == "sim":
-        parameters.append({"cam_base_topic": camera["stonefish_topic"]})
 
     return Node(
         package="aruco_opencv",
@@ -126,6 +140,8 @@ def launch_setup(context, *args, **kwargs):
 
     if environment == "real":
         nodes.append(usb_camera(camera_name, camera))
+    elif environment == "sim":
+        nodes.append(sim_camera_republisher(camera_name, camera))
 
     if enabled(camera.get("decimated", {}).get("enabled", False)):
         nodes.append(decimated(camera_name, camera, environment))

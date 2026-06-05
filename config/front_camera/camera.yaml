@@ -9,10 +9,7 @@ framerate: 10.0
 pixel_format: mjpeg2rgb
 io_method: mmap
 
-stonefish_topic: /bluerov/front_camera/camera/image_color
-
-compressed:
-  enabled: false
+stonefish_topic: /bluerov/stonefish/front_camera/image_color
 
 decimated:
   enabled: false

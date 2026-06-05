@@ -56,7 +56,8 @@ private:
       image_pub_->publish(*output_image.toImageMsg());
 
       if (camera_info_) {
-        camera_info_pub_->publish(decimated_camera_info(msg->header, output.cols, output.rows));
+        camera_info_pub_->publish(
+          decimated_camera_info(msg->header, cropped.cols, cropped.rows, output.cols, output.rows));
       }
     } catch (const std::exception & ex) {
       RCLCPP_ERROR(get_logger(), "Failed to decimate image: %s", ex.what());
@@ -67,19 +68,15 @@ private:
   {
     const int x0 = std::clamp(offset_x_, 0, image.cols);
     const int y0 = std::clamp(offset_y_, 0, image.rows);
-    const int crop_width = width_ > 0 ? width_ : image.cols - x0;
-    const int crop_height = height_ > 0 ? height_ : image.rows - y0;
-    const int x1 = std::min(x0 + crop_width, image.cols);
-    const int y1 = std::min(y0 + crop_height, image.rows);
-    return image(cv::Rect(x0, y0, x1 - x0, y1 - y0));
+    return image(cv::Rect(x0, y0, image.cols - x0, image.rows - y0));
   }
 
   cv::Mat resize(const cv::Mat & image) const
   {
     const int safe_decimation_x = std::max(decimation_x_, 1);
     const int safe_decimation_y = std::max(decimation_y_, 1);
-    const int output_width = std::max(image.cols / safe_decimation_x, 1);
-    const int output_height = std::max(image.rows / safe_decimation_y, 1);
+    const int output_width = width_ > 0 ? width_ : std::max(image.cols / safe_decimation_x, 1);
+    const int output_height = height_ > 0 ? height_ : std::max(image.rows / safe_decimation_y, 1);
 
     cv::Mat output;
     const int interpolation =
@@ -89,15 +86,19 @@ private:
   }
 
   sensor_msgs::msg::CameraInfo decimated_camera_info(
-    const std_msgs::msg::Header & header, int width, int height) const
+    const std_msgs::msg::Header & header,
+    int source_width,
+    int source_height,
+    int width,
+    int height) const
   {
     sensor_msgs::msg::CameraInfo info = *camera_info_;
     info.header = header;
     info.width = width;
     info.height = height;
 
-    const double dx = static_cast<double>(std::max(decimation_x_, 1));
-    const double dy = static_cast<double>(std::max(decimation_y_, 1));
+    const double dx = static_cast<double>(source_width) / static_cast<double>(width);
+    const double dy = static_cast<double>(source_height) / static_cast<double>(height);
     const double ox = static_cast<double>(offset_x_);
     const double oy = static_cast<double>(offset_y_);
 
