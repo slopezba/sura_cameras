@@ -35,6 +35,7 @@ def launch_setup(context, *args, **kwargs):
                     ("camera_config_dir", camera_config_dir),
                     ("environment", LaunchConfiguration("environment")),
                     ("aruco", str(enabled(camera.get("aruco", False))).lower()),
+                    ("driver", str(camera.get("driver", "") or "")),
                 ],
             )
         )

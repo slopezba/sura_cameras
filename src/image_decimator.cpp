@@ -23,13 +23,13 @@ public:
     height_ = declare_parameter<int>("height", 0);
     interpolation_ = declare_parameter<std::string>("interpolation", "area");
 
-    auto sensor_qos = rclcpp::SensorDataQoS();
-    image_pub_ = create_publisher<sensor_msgs::msg::Image>("decimated/image_raw", sensor_qos);
+    auto image_qos = rclcpp::QoS(10);
+    image_pub_ = create_publisher<sensor_msgs::msg::Image>("decimated/image_raw", image_qos);
     camera_info_pub_ =
       create_publisher<sensor_msgs::msg::CameraInfo>("decimated/camera_info", rclcpp::QoS(10));
 
     image_sub_ = create_subscription<sensor_msgs::msg::Image>(
-      "image_raw", sensor_qos,
+      "image_raw", image_qos,
       std::bind(&ImageDecimator::on_image, this, std::placeholders::_1));
     camera_info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
       "camera_info", rclcpp::QoS(10),

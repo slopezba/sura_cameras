@@ -5,7 +5,7 @@ import tempfile
 
 import yaml
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -61,6 +61,58 @@ def usb_camera(camera_name, camera):
         name=f"{camera_name}_usb_cam",
         output="log",
         parameters=[parameters],
+    )
+
+
+def gstreamer_camera(camera_name, camera):
+    gstreamer = camera.get("gstreamer", {}) or {}
+    width = int(gstreamer.get("width", camera["width"]))
+    height = int(gstreamer.get("height", camera["height"]))
+    framerate = int(gstreamer.get("framerate", camera.get("framerate", 15)))
+    host = str(gstreamer.get("host", "192.168.1.236"))
+    port = int(gstreamer.get("port", 5600))
+    bitrate = int(gstreamer.get("bitrate", 3500))
+    key_int_max = int(gstreamer.get("key_int_max", framerate))
+    threads = int(gstreamer.get("threads", 2))
+
+    return ExecuteProcess(
+        cmd=[
+            "gst-launch-1.0",
+            "-v",
+            "v4l2src",
+            f"device={camera['port']}",
+            "do-timestamp=true",
+            "!",
+            f"image/jpeg,width={width},height={height},framerate={framerate}/1",
+            "!",
+            "jpegdec",
+            "!",
+            "videoconvert",
+            "!",
+            "x264enc",
+            "tune=zerolatency",
+            "speed-preset=ultrafast",
+            f"bitrate={bitrate}",
+            f"key-int-max={key_int_max}",
+            f"threads={threads}",
+            "!",
+            "video/x-h264,profile=baseline",
+            "!",
+            "h264parse",
+            "config-interval=1",
+            "!",
+            "rtph264pay",
+            "pt=96",
+            "config-interval=1",
+            "!",
+            "udpsink",
+            f"host={host}",
+            f"port={port}",
+            "sync=false",
+            "async=false",
+        ],
+        name=f"{camera_name}_gstreamer",
+        output="screen",
     )
 
 
@@ -130,18 +182,29 @@ def launch_setup(context, *args, **kwargs):
     config_dir = LaunchConfiguration("camera_config_dir").perform(context)
     environment = LaunchConfiguration("environment").perform(context)
     launch_aruco = enabled(LaunchConfiguration("aruco").perform(context))
+    driver_override = LaunchConfiguration("driver").perform(context).strip()
 
     camera = load_yaml(os.path.join(config_dir, "camera.yaml"))
     if not camera:
         return []
 
     camera["config_dir"] = config_dir
+    if driver_override:
+        camera["driver"] = driver_override
+
+    driver = str(camera.get("driver", "usb_cam")).lower()
     nodes = []
 
     if environment == "real":
-        nodes.append(usb_camera(camera_name, camera))
+        if driver == "gstreamer":
+            nodes.append(gstreamer_camera(camera_name, camera))
+        else:
+            nodes.append(usb_camera(camera_name, camera))
     elif environment == "sim":
         nodes.append(sim_camera_republisher(camera_name, camera))
+
+    if environment == "real" and driver != "usb_cam":
+        return nodes
 
     if enabled(camera.get("decimated", {}).get("enabled", False)):
         nodes.append(decimated(camera_name, camera, environment))
@@ -159,6 +222,7 @@ def generate_launch_description():
             DeclareLaunchArgument("camera_config_dir"),
             DeclareLaunchArgument("environment", default_value="sim"),
             DeclareLaunchArgument("aruco", default_value="false"),
+            DeclareLaunchArgument("driver", default_value=""),
             OpaqueFunction(function=launch_setup),
         ]
     )

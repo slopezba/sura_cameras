@@ -11,6 +11,16 @@ io_method: mmap
 
 stonefish_topic: /bluerov/stonefish/down_camera/image_color
 
+gstreamer:
+  width: 1280
+  height: 720
+  framerate: 15
+  host: 192.168.1.236
+  port: 5601
+  bitrate: 3500
+  key_int_max: 15
+  threads: 2
+
 decimated:
   enabled: true
   width: 320
