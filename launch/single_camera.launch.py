@@ -21,6 +21,17 @@ def load_yaml(path):
         return yaml.safe_load(f) or {}
 
 
+def resolve_robot_namespace(camera, robot_namespace):
+    robot_namespace = robot_namespace.strip("/")
+    for field in ("frame_id", "stonefish_topic"):
+        value = camera.get(field)
+        if isinstance(value, str) and "{robot_namespace}" in value:
+            if not robot_namespace:
+                raise ValueError(f"robot_namespace is required for camera {field}")
+            camera[field] = value.replace("{robot_namespace}", robot_namespace)
+    return camera
+
+
 def camera_info_url(camera_name, camera):
     calibration = load_yaml(os.path.join(camera["config_dir"], "calibration.yaml"))
     key = f"calibration_{int(camera['width'])}x{int(camera['height'])}"
@@ -180,6 +191,7 @@ def aruco_tracker(camera_name, camera, environment):
 def launch_setup(context, *args, **kwargs):
     camera_name = LaunchConfiguration("camera_name").perform(context)
     config_dir = LaunchConfiguration("camera_config_dir").perform(context)
+    robot_namespace = LaunchConfiguration("robot_namespace").perform(context)
     environment = LaunchConfiguration("environment").perform(context)
     launch_aruco = enabled(LaunchConfiguration("aruco").perform(context))
     driver_override = LaunchConfiguration("driver").perform(context).strip()
@@ -187,6 +199,8 @@ def launch_setup(context, *args, **kwargs):
     camera = load_yaml(os.path.join(config_dir, "camera.yaml"))
     if not camera:
         return []
+
+    resolve_robot_namespace(camera, robot_namespace)
 
     camera["config_dir"] = config_dir
     if driver_override:
@@ -220,6 +234,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("camera_name"),
             DeclareLaunchArgument("camera_config_dir"),
+            DeclareLaunchArgument("robot_namespace", default_value="bluerov"),
             DeclareLaunchArgument("environment", default_value="sim"),
             DeclareLaunchArgument("aruco", default_value="false"),
             DeclareLaunchArgument("driver", default_value=""),

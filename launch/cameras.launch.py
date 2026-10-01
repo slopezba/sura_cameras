@@ -33,6 +33,7 @@ def launch_setup(context, *args, **kwargs):
                 launch_arguments=[
                     ("camera_name", camera_name),
                     ("camera_config_dir", camera_config_dir),
+                    ("robot_namespace", LaunchConfiguration("robot_namespace")),
                     ("environment", LaunchConfiguration("environment")),
                     ("aruco", str(enabled(camera.get("aruco", False))).lower()),
                     ("driver", str(camera.get("driver", "") or "")),
@@ -46,6 +47,7 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     return LaunchDescription(
         [
+            DeclareLaunchArgument("robot_namespace", default_value="bluerov"),
             DeclareLaunchArgument("environment", default_value="sim"),
             DeclareLaunchArgument("cameras", default_value="{}"),
             OpaqueFunction(function=launch_setup),

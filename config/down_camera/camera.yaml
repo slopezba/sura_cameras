@@ -1,15 +1,15 @@
 name: down_camera
 driver: usb_cam
 port: /dev/video0
-frame_id: bluerov/camera_down/optical_frame
+frame_id: "{robot_namespace}/camera_down/optical_frame"
 
-width: 640
-height: 360
+width: 960
+height: 540
 framerate: 10.0
 pixel_format: mjpeg2rgb
 io_method: mmap
 
-stonefish_topic: /bluerov/stonefish/down_camera/image_color
+stonefish_topic: "/{robot_namespace}/stonefish/down_camera/image_color"
 
 gstreamer:
   width: 1280
